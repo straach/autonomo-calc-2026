@@ -1,0 +1,43 @@
+🇪🇸 2026 Spanish Autónomo Tax Calculator
+A lightweight, browser-based estimation tool for freelancers (Autónomos) in Spain. This calculator helps you estimate your monthly net income by accounting for 2026 Social Security (Seguridad Social) brackets, IRPF (income tax) retention, and startup reductions.
+
+⚠️ Legal Disclaimer (Important)
+This tool is provided for educational and illustrative purposes only.
+
+Not Professional Advice: This calculator does not constitute financial, legal, or tax advice. It is a simulation tool.
+
+Estimates Only: Tax laws in Spain are complex, subject to frequent change, and vary based on individual circumstances, family situation, and business activity.
+
+No Liability: I (the creator) assume no responsibility for any errors, omissions, or financial decisions made based on the results of this calculator.
+
+Consult a Professional: Always verify your tax obligations with a professional Gestor or a qualified tax advisor before making business or financial decisions.
+
+Features
+SS Bracket Selection: Includes the 15 tiers for 2026 Social Security contributions.
+
+Tarifa Plana Mode: Toggle for first-year flat rate Social Security.
+
+IRPF Reductions: Toggle for the 20% startup tax reduction (first 2 years).
+
+Regional Tax Variations: Selectable regional IRPF brackets to account for local tax differences (e.g., Madrid vs. Catalunya).
+
+Real-time Breakdown: Detailed visualization of yearly vs. monthly contributions.
+
+How to use
+This tool is a standalone HTML file.
+
+Directly in Browser: You can simply open the index.html file in any modern web browser (Chrome, Firefox, Safari).
+
+Host on GitHub Pages:
+
+Enable GitHub Pages in your repository settings (under Settings > Pages).
+
+Set the branch to main (or master).
+
+Your calculator will be live at [https://your-username.github.io/your-repo-name/](https://your-username.github.io/your-repo-name/).
+
+Contributing
+While this tool aims to reflect current tax logic, Spanish tax laws update regularly. If you find a discrepancy with official 2026 tax tables, please feel free to open an Issue or submit a Pull Request.
+
+License
+This project is open-source and available under the MIT License.
