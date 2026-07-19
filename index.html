@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-gray-100 p-5 flex justify-center">
+  <div id="root" class="w-full max-w-lg"></div>
+  
+  <script type="text/babel">
+    const { useState } = React;
+
+    const SS_TOTAL_PERCENTAGE = 0.315; 
+    const SS_BREAKDOWN = [
+      { name: "Common Contingencies", rate: "28.30%" },
+      { name: "Professional Contingencies", rate: "1.30%" },
+      { name: "Cessation of Activity", rate: "0.90%" },
+      { name: "Training", rate: "0.10%" },
+      { name: "MEI (Equity)", rate: "0.90%" }
+    ];
+    const MINIMO_PERSONAL = 5550; 
+    const GENERIC_EXPENSES_DEDUCTION = 0.07; 
+    const TARIFA_PLANA_FEE = 88.64;
+
+    const REGIONAL_TAX_SCALES = {
+      "General": { name: "General (Standard)", rates: [19, 24, 30, 37, 45, 47] },
+      "Madrid": { name: "Madrid (Lower)", rates: [18.5, 23.5, 29.5, 36.5, 44.5, 46.5] },
+      "Catalunya": { name: "Catalunya (Higher)", rates: [19.5, 24.5, 30.5, 37.5, 45.5, 48.0] }
+    };
+
+    const TRAMOS_2026 = [
+      { id: 1, max: 670, base: 653.59, label: "Tramo 1 (<= 670€)" },
+      { id: 2, max: 900, base: 718.95, label: "Tramo 2 (670€ - 900€)" },
+      { id: 3, max: 1166.70, base: 849.67, label: "Tramo 3 (900€ - 1166.70€)" },
+      { id: 4, max: 1300, base: 950.98, label: "Tramo 4 (1166.70€ - 1300€)" },
+      { id: 5, max: 1500, base: 960.78, label: "Tramo 5 (1300€ - 1500€)" },
+      { id: 6, max: 1700, base: 960.78, label: "Tramo 6 (1500€ - 1700€)" },
+      { id: 7, max: 1850, base: 1143.79, label: "Tramo 7 (1700€ - 1850€)" },
+      { id: 8, max: 2030, base: 1209.15, label: "Tramo 8 (1850€ - 2030€)" },
+      { id: 9, max: 2330, base: 1274.51, label: "Tramo 9 (2030€ - 2330€)" },
+      { id: 10, max: 2760, base: 1356.21, label: "Tramo 10 (2330€ - 2760€)" },
+      { id: 11, max: 3190, base: 1437.91, label: "Tramo 11 (2760€ - 3190€)" },
+      { id: 12, max: 3620, base: 1519.61, label: "Tramo 12 (3190€ - 3620€)" },
+      { id: 13, max: 4050, base: 1601.31, label: "Tramo 13 (3620€ - 4050€)" },
+      { id: 14, max: 6000, base: 1732.03, label: "Tramo 14 (4050€ - 6000€)" },
+      { id: 15, max: Infinity, base: 1928.10, label: "Tramo 15 (> 6000€)" }
+    ];
+
+    function calculate_tax(value, rates) {
+      let tax = 0;
+      tax += calculate_tax_by_slice(value, 0, 12450, rates[0]);
+      tax += calculate_tax_by_slice(value, 12450, 20200, rates[1]);
+      tax += calculate_tax_by_slice(value, 20200, 35200, rates[2]);
+      tax += calculate_tax_by_slice(value, 35200, 60000, rates[3]);
+      tax += calculate_tax_by_slice(value, 60000, 300000, rates[4]);
+      tax += calculate_tax_by_slice(value, 300000, Infinity, rates[5]);
+      return tax;
+    }
+
+    function calculate_tax_by_slice(total, from_val, to_val, percentage) {
+      if (total <= from_val) return 0;
+      let taxable = Math.min(total, to_val) - from_val;
+      return taxable * (percentage / 100);
+    }
+
+    function App() {
+      const [gross, setGross] = useState("6300");
+      const [expenses, setExpenses] = useState("200");
+      const [applyTarifaPlana, setApplyTarifaPlana] = useState(false);
+      const [applyIrpfReduction, setApplyIrpfReduction] = useState(false);
+      const [manualTramoId, setManualTramoId] = useState(null);
+      const [region, setRegion] = useState("General");
+
+      const nGross = parseFloat(gross) || 0;
+      const nExpenses = parseFloat(expenses) || 0;
+
+      const grossYearly = nGross * 12;
+      const expensesYearly = nExpenses * 12;
+      const netYieldForSS = (nGross - nExpenses) * (1 - GENERIC_EXPENSES_DEDUCTION);
+      
+      const activeTramo = TRAMOS_2026.find(t => t.id === (manualTramoId || (TRAMOS_2026.find(t => netYieldForSS <= t.max) || TRAMOS_2026[14]).id));
+      const ssFee = applyTarifaPlana ? TARIFA_PLANA_FEE : (activeTramo.base * SS_TOTAL_PERCENTAGE);
+      const ssYearly = ssFee * 12;
+
+      const netYieldRaw = grossYearly - expensesYearly - ssYearly;
+      const irpfGenericExpenses = Math.min(netYieldRaw * GENERIC_EXPENSES_DEDUCTION, 2000);
+      const baseBeforeReduction = Math.max(0, netYieldRaw - irpfGenericExpenses);
+      const reductionAmount = applyIrpfReduction ? Math.min(baseBeforeReduction, 100000) * 0.20 : 0;
+      const taxableIncome = baseBeforeReduction - reductionAmount;
+      const irpfAnnual = Math.max(0, calculate_tax(taxableIncome, REGIONAL_TAX_SCALES[region].rates) - calculate_tax(MINIMO_PERSONAL, REGIONAL_TAX_SCALES[region].rates));
+      const netMonthly = nGross - nExpenses - ssFee - (irpfAnnual / 12);
+
+      return (
+        <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-200">
+          <h1 className="text-xl font-black text-gray-800 mb-6 border-b pb-4">Autónomo Calculator 2026</h1>
+          
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div>
+              <label className="text-[10px] font-bold text-gray-500 uppercase">Monthly Gross (€)</label>
+              <input type="text" value={gross} onChange={e => setGross(e.target.value)} className="w-full p-3 mt-1 bg-gray-50 border border-gray-300 rounded-lg outline-none font-mono text-sm"/>
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-gray-500 uppercase">Monthly Expenses (€)</label>
+              <input type="text" value={expenses} onChange={e => setExpenses(e.target.value)} className="w-full p-3 mt-1 bg-gray-50 border border-gray-300 rounded-lg outline-none font-mono text-sm text-red-600"/>
+            </div>
+          </div>
+          
+          <div className="space-y-2 mb-6">
+            <label className="flex items-center text-sm font-semibold cursor-pointer"><input type="checkbox" className="w-4 h-4 mr-2" checked={applyTarifaPlana} onChange={e => setApplyTarifaPlana(e.target.checked)}/> First Year SS (Tarifa Plana)</label>
+            <label className="flex items-center text-sm font-semibold cursor-pointer"><input type="checkbox" className="w-4 h-4 mr-2" checked={applyIrpfReduction} onChange={e => setApplyIrpfReduction(e.target.checked)}/> 20% IRPF Startup Reduction</label>
+          </div>
+
+          {!applyTarifaPlana && (
+             <select value={activeTramo.id} onChange={(e) => setManualTramoId(Number(e.target.value))} className="w-full p-3 mb-6 bg-gray-50 border border-gray-300 rounded-lg font-mono text-sm">
+               {TRAMOS_2026.map(t => <option key={t.id} value={t.id}>{t.label} - Base: €{t.base}</option>)}
+             </select>
+          )}
+
+          <select value={region} onChange={(e) => setRegion(e.target.value)} className="w-full p-3 mb-6 bg-gray-50 border border-gray-300 rounded-lg font-mono text-sm">
+            {Object.keys(REGIONAL_TAX_SCALES).map(key => <option key={key} value={key}>{REGIONAL_TAX_SCALES[key].name}</option>)}
+          </select>
+
+          {/* BOX 1: SS */}
+          <div className={`p-4 rounded-lg mb-4 text-[10px] ${applyTarifaPlana ? 'bg-green-800 text-white' : 'bg-gray-900 text-white'}`}>
+            <h3 className="font-bold border-b border-gray-600 pb-1 mb-2">Seguridad Social {applyTarifaPlana ? "(MODE: TARIFA PLANA ACTIVE)" : "(31.5% Total)"}</h3>
+            {!applyTarifaPlana && SS_BREAKDOWN.map(item => <div key={item.name} className="flex justify-between py-0.5"><span className="text-gray-400">{item.name}</span><span className="font-mono">{item.rate}</span></div>)}
+            <div className="pt-2 mt-2 border-t border-gray-600 space-y-1">
+                <div className="flex justify-between font-bold"><span>Fee (Monthly)</span><span>€{ssFee.toFixed(2)}</span></div>
+                <div className="flex justify-between font-bold"><span>Fee (Yearly)</span><span>€{ssYearly.toFixed(2)}</span></div>
+            </div>
+          </div>
+
+          {/* BOX 2: IRPF */}
+          <div className="bg-gray-100 p-4 rounded-lg mb-6 text-[11px] font-mono text-gray-800">
+            <h3 className="font-bold border-b border-gray-300 pb-1 mb-2 text-gray-700">IRPF Calculation (Yearly)</h3>
+            <div className="flex justify-between"><span>Gross Income</span><span>€{grossYearly.toFixed(0)}</span></div>
+            <div className="flex justify-between text-red-600"><span>- Expenses</span><span>€{expensesYearly.toFixed(0)}</span></div>
+            <div className="flex justify-between text-red-600"><span>- Soc. Security</span><span>€{ssYearly.toFixed(0)}</span></div>
+            <div className="flex justify-between text-red-600"><span>- Generic Expenses (7% max 2k)</span><span>€{irpfGenericExpenses.toFixed(0)}</span></div>
+            <div className="border-t border-gray-300 my-1"></div>
+            <div className="flex justify-between font-bold"><span>Net Yield</span><span>€{baseBeforeReduction.toFixed(0)}</span></div>
+            <div className="flex justify-between text-green-700"><span>- 20% Reduction</span><span>€{reductionAmount.toFixed(0)}</span></div>
+            <div className="border-t border-dashed border-gray-400 my-1"></div>
+            <div className="flex justify-between font-bold text-base"><span>Final Tax Base</span><span>€{taxableIncome.toFixed(0)}</span></div>
+          </div>
+
+          {/* Final Net */}
+          <div className="bg-green-600 text-white p-4 rounded-lg text-center shadow-lg font-black text-2xl mb-4">
+            Net Monthly: €{netMonthly.toFixed(2)}
+          </div>
+
+          <p className="text-[10px] text-gray-500 text-center italic">
+            Disclaimer: For educational simulation only. This is not financial or tax advice. Please consult a professional gestor for official tax obligations.
+          </p>
+        </div>
+      );
+    }
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
